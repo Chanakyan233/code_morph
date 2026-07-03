@@ -105,7 +105,7 @@ export const runCode = createServerFn({ method: "POST" })
       if (lang.includes("python")) {
         codeToRun = `try: import matplotlib as _m; _m.use('Agg'); import matplotlib.pyplot as _plt; _plt.show = lambda *a, **k: _plt.savefig('__auto_plot.png')\nexcept: pass\n` + codeToRun;
       } else if (lang.includes("r") && lang.length === 1) {
-        codeToRun = `options(device = "png", warn = -1)\n` + codeToRun;
+        codeToRun = `.libPaths(c('C:/Users/amudi/R-library', .libPaths()))\noptions(device = "png", warn = -1)\n` + codeToRun;
       }
 
       await writeFile(filePath, codeToRun, "utf-8");
