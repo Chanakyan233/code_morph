@@ -1098,3 +1098,53 @@ ${data.code}
       throw new Error(getErrorMessage(error));
     }
   });
+
+export const fixRuntimeError = createServerFn({ method: "POST" })
+  .validator(
+    (input: {
+      code: string;
+      error: string;
+      language: string;
+      datasets?: { name: string }[];
+    }) => {
+      if (!input?.code) throw new Error("Code is required");
+      if (!input?.error) throw new Error("Error message is required");
+      if (!input?.language) throw new Error("Language is required");
+      return input;
+    },
+  )
+  .handler(async ({ data }): Promise<{ fixedCode: string }> => {
+    const datasetInfo = data.datasets && data.datasets.length > 0
+      ? `Available uploaded datasets:\n${data.datasets.map(d => `- ${d.name}`).join("\n")}`
+      : "No datasets uploaded.";
+
+    const prompt = `You are an expert code troubleshooter and fixer.
+We executed a ${data.language} script and it failed with a runtime error.
+
+${datasetInfo}
+
+Runtime Error / Stack Trace:
+\`\`\`
+${data.error}
+\`\`\`
+
+Here is the original code:
+\`\`\`${data.language}
+${data.code}
+\`\`\`
+
+Requirements:
+- Diagnose the runtime error (e.g. check if they used pd.read_csv on an Excel file, or used a wrong filename, or if it was a missing group parameter in ggplot, etc.).
+- Fix the code to address this specific runtime error.
+- Return ONLY the fully corrected, executable code inside a single fenced code block. No prose or explanations.`;
+
+    try {
+      const rawCode = await callGroq(prompt, false);
+      return {
+        fixedCode: extractCode(rawCode),
+      };
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    }
+  });
+

@@ -28,6 +28,7 @@ import {
   analyzeCode,
   convertCode,
   fixCode,
+  fixRuntimeError,
   type AnalysisResult,
   type ConversionResult,
 } from "@/lib/gemini.functions";
@@ -145,6 +146,37 @@ function Index() {
       datasets?: { name: string; content: string }[];
     }) => runCode({ data: vars }),
     onSuccess: (result) => setConvertedRunResult(result),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const fixRuntimeErrorMutation = useMutation({
+    mutationFn: (vars: { code: string; error: string; language: string; isSource: boolean }) =>
+      fixRuntimeError({
+        data: {
+          code: vars.code,
+          error: vars.error,
+          language: vars.language,
+          datasets: datasets.map((d) => ({ name: d.name })),
+        },
+      }),
+    onSuccess: (result, vars) => {
+      if (vars.isSource) {
+        setCode(result.fixedCode);
+        setSourceRunResult(null);
+        toast.success("Fixed source code based on runtime error!");
+        // Re-run code automatically? We can do that or let the user review it first. 
+        // Let's just let the user run it again so they see the fix.
+      } else {
+        if (conversion) {
+          setConversion({
+            ...conversion,
+            convertedCode: result.fixedCode,
+          });
+        }
+        setConvertedRunResult(null);
+        toast.success("Fixed converted R code based on runtime error!");
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -422,6 +454,29 @@ function Index() {
                       Failed
                     </Badge>
                   )}
+                  {!sourceRunResult.success && sourceRunResult.error && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto h-7 text-xs text-amber-500 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20"
+                      onClick={() =>
+                        fixRuntimeErrorMutation.mutate({
+                          code,
+                          error: sourceRunResult.error || "",
+                          language: analysis?.language || "Python",
+                          isSource: true,
+                        })
+                      }
+                      disabled={fixRuntimeErrorMutation.isPending}
+                    >
+                      {fixRuntimeErrorMutation.isPending ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <Wrench className="mr-1 h-3 w-3" />
+                      )}
+                      Auto-Fix Error
+                    </Button>
+                  )}
                 </div>
                 <pre className="whitespace-pre-wrap rounded bg-muted p-3 text-xs font-mono">
                   {sourceRunResult.error || sourceRunResult.output || "No output"}
@@ -532,6 +587,29 @@ function Index() {
                       >
                         Failed
                       </Badge>
+                    )}
+                    {!convertedRunResult.success && convertedRunResult.error && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-auto h-7 text-xs text-amber-500 border-amber-500/20 bg-amber-500/10 hover:bg-amber-500/20"
+                        onClick={() =>
+                          fixRuntimeErrorMutation.mutate({
+                            code: conversion?.convertedCode || "",
+                            error: convertedRunResult.error || "",
+                            language: target || "R",
+                            isSource: false,
+                          })
+                        }
+                        disabled={fixRuntimeErrorMutation.isPending}
+                      >
+                        {fixRuntimeErrorMutation.isPending ? (
+                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        ) : (
+                          <Wrench className="mr-1 h-3 w-3" />
+                        )}
+                        Auto-Fix Error
+                      </Button>
                     )}
                   </div>
                   <pre className="whitespace-pre-wrap rounded bg-muted p-3 text-xs font-mono">
