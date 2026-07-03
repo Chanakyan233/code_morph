@@ -454,7 +454,7 @@ function Index() {
                       Failed
                     </Badge>
                   )}
-                  {!sourceRunResult.success && sourceRunResult.error && (
+                  {!sourceRunResult.success && sourceRunResult.error && (analysis?.language === "Python" || analysis?.language === "R") && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -588,7 +588,7 @@ function Index() {
                         Failed
                       </Badge>
                     )}
-                    {!convertedRunResult.success && convertedRunResult.error && (
+                    {!convertedRunResult.success && convertedRunResult.error && (target === "Python" || target === "R") && (
                       <Button
                         size="sm"
                         variant="outline"
